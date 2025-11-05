@@ -130,6 +130,7 @@ CUSTOM_ITEM_SALVAGE = "Salvage"
 # GW2 API link
 URL_ITEMS_DETAILS = 'https://api.guildwars2.com/v2/items'
 URL_ITEMS_TP = 'https://api.guildwars2.com/v2/commerce/prices'
+API_REQUEST_SIZE_LIMIT = 200
 
 # Salvage device cost per usage
 SLV_COST_RC = 30
@@ -388,24 +389,31 @@ def remove_green_unids_row(df):
 # and return a joined dataframe.
 def add_items_details(df):
     item_ids = df.get_column(CN_ITEM_ID).drop_nulls()
-
-    # Build comma-separated ID list
-    ids_param = ",".join(map(str, item_ids))
-    url = f"{URL_ITEMS_DETAILS}?ids={ids_param}"
-
-    response = requests.get(url)
-    response.raise_for_status()  # Throw error if something went wrong
-
-    items_data = response.json()
     items_details = []
 
-    for item in items_data:
-        items_details.append({
-            CN_ITEM_ID: item.get("id"),
-            CN_ITEM_TYPE: item.get("type"),
-            CN_ITEM_DETAIL_TYPE: item.get("details", {}).get("type"),
-            CN_ITEM_RARITY: item.get("rarity"),
-        })
+    while(item_ids.len() > 0):
+
+        # Build comma-separated ID list with limit of 200 per request
+        if (item_ids.len() <= API_REQUEST_SIZE_LIMIT):
+            ids_param = ",".join(map(str, item_ids))
+        else:
+            ids_param = ",".join(map(str, item_ids[0:API_REQUEST_SIZE_LIMIT]))
+        
+        item_ids = item_ids[API_REQUEST_SIZE_LIMIT:]
+
+        url = f"{URL_ITEMS_DETAILS}?ids={ids_param}"
+
+        response = requests.get(url)
+        response.raise_for_status()  # Throw error if something went wrong
+
+        items_data = response.json()
+        for item in items_data:
+            items_details.append({
+                CN_ITEM_ID: item.get("id"),
+                CN_ITEM_TYPE: item.get("type"),
+                CN_ITEM_DETAIL_TYPE: item.get("details", {}).get("type"),
+                CN_ITEM_RARITY: item.get("rarity"),
+            })
 
     items_details = pl.DataFrame(items_details)
     df = df.join(items_details, on=CN_ITEM_ID, coalesce=True)
