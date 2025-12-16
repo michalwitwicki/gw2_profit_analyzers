@@ -68,6 +68,7 @@ DATA_DIR = "./opening_data"
 
 # TP tax
 TP_TAX = 0.85
+SECS_IN_HOUR = 3600
 
 # Data file prefixes
 PREFIX_GRN_UNID_OPN_GRN_GEAR_SLV_RC = "GRN-UNID_OPN_GRN-GEAR_SLV_RC_"
@@ -107,6 +108,8 @@ CN_PRICE_AFTR_PROCESSING = "price_aftr_processing"
 CN_TP_PRICE = "tp_price"
 CN_CURRENT_BUY = "curr_buy"
 CN_CURRENT_SELL = "curr_sell"
+CN_GOLD_PER_H_45S_PER_STACK = "g/h 45s/250"
+CN_GOLD_PER_H_60S_PER_STACK = "g/h 60s/250"
 
 # Refinement DF column names
 CN_BASE_ITEM = "base_item"
@@ -763,6 +766,22 @@ def create_buy_or_not_df(avg_profit_from_grn_unid, df_tp_prices):
     df_buy_or_not = df_buy_or_not.with_columns(
         (pl.col(CN_PROFIT) * 250)
         .alias(CN_PROFIT_250)
+    )
+
+    # add gold per hour
+    secs_per_stack = 45 # time to process one stack of 250 unids
+    stacks_per_hour = SECS_IN_HOUR / secs_per_stack
+
+    df_buy_or_not = df_buy_or_not.with_columns(
+        (pl.col(CN_PROFIT_250) * stacks_per_hour / 10000)
+        .alias(CN_GOLD_PER_H_45S_PER_STACK)
+    )
+
+    secs_per_stack = 60 # time to process one stack of 250 unids
+    stacks_per_hour = SECS_IN_HOUR / secs_per_stack
+    df_buy_or_not = df_buy_or_not.with_columns(
+        (pl.col(CN_PROFIT_250) * stacks_per_hour / 10000)
+        .alias(CN_GOLD_PER_H_60S_PER_STACK)
     )
 
     return df_buy_or_not
